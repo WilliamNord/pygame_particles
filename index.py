@@ -1,4 +1,5 @@
 import pygame
+import random
 from pygame import Vector2
 
 # pos = (0,0)
@@ -58,7 +59,8 @@ class Particle_Manager:
     def __init__(self):
         self.particles = []
     
-    def add(self, particles):
+    def add(self, particles: list[Particle]):
+        #extend legget hvert element i en iterable til slutten av listen
         self.particles.extend(particles)
         
     def grav_Force(self, distance, p1_mass, p2_mass):
@@ -73,35 +75,42 @@ class Particle_Manager:
         Returns:
             float: akselerasjon fra tyngdekraft
         """
-        grav_const = 500
-        return (grav_const * p1_mass, p2_mass) / (distance**2)
+        grav_const = 10000
+        return (grav_const * p1_mass * p2_mass) / (distance**2)
     
     def apply_forces(self):
-        for p1 in self.particles:
-            p1: Particle
-            
-            for p2 in self.particles:
-                p2: Particle
-                
-                if p2 == p1:
-                    continue
+        num = len(self.particles)
+        
+        for i in range(num):
+            p1: Particle = self.particles[i]
+            for j in range(i + 1, num):
+                p2: Particle = self.particles[j]
                 
                 diff: Vector2 = p2.pos - p1.pos
-                #Får error hvis vi må dele på null og ungå å påvirke kuler som er for langt unna (sparer arbeid)
-                dist = min(max(diff.length(), 0.01), p1.size * 5)
+                raw_dist = diff.length()
                 
+                if raw_dist == 0:
+                    p1.pos.x += random.uniform(-0.1, 0.1)
+                    p1.pos.y += random.uniform(-0.1, 0.1)
+                    continue
+                
+                if raw_dist > 150:
+                    continue
+                
+                #Vi har garantert at diff og raw_dist ikke er null
                 direction = diff.normalize()
                 min_dist = p1.size + p2.size + 10
                 
-                if dist < min_dist:
-                    strength = (min_dist - dist) * 25
+                if raw_dist < min_dist:
+                    strength = (min_dist - raw_dist) * 25
                     force = direction * strength
-                    p1.apply_force(force)
-                    p2.apply_force(-force)
+                    p1.apply_force(-force)
+                    p2.apply_force(force)
                 else:
                     #Hvis partiklene er langt nok unna så drar de til hverandre
-                    strength = self.grav_Force(dist, p1.mass, p2.mass)
+                    strength = self.grav_Force(raw_dist, p1.mass, p2.mass)
                     force = direction * strength
+                    #Direction er FRA p1 TIL p2. For å dra må vi flytte p1 mot p2 og p2 mot p1
                     p1.apply_force(force)
                     p2.apply_force(-force)
                 
@@ -122,15 +131,36 @@ class Particle_Manager:
 class Game:
     def __init__(self):
         pygame.init()
-        
         self.clock = pygame.time.Clock() 
         self.running = False
-        
         self.PM = Particle_Manager()
-        
         self.screen = pygame.display.set_mode(SCREEN_SIZE)
+        
+        self.spawn_particle(60)
     
+    def spawn_particle(self, number):
+        new_particles = []
+        
+        rand_colors = ["red", "green", "blue"]
+        
+        for i in range(number):
+            pos = Vector2(
+                random.uniform(50, SCREEN_SIZE.x - 50),
+                random.uniform(50, SCREEN_SIZE.y - 50)
+            )
+            #tilfelldig startfart
+            vel = Vector2(random.uniform(-30, 30), random.uniform(-30, 30))
+            
+            new_particles.append(Particle(pos, vel, size =6, color=random.choice(rand_colors)))
+        
+        self.PM.add(new_particles)
+            
     def update(self, dt):
+        if pygame.mouse.get_pressed()[0]:
+            pos = Vector2(pygame.mouse.get_pos())
+            offset = Vector2(random.uniform(-5, 5), random.uniform(-5, 5))
+            self.PM.add( [Particle(pos + offset, vel=Vector2(0,0), size=6, color="white")] )
+        
         self.PM.update(dt)
     
     def draw(self, surface):
@@ -147,12 +177,20 @@ class Game:
         
         while self.running:
             dt = self.clock.tick() * 0.001
+            
             self.fps = self.clock.get_fps()
-            pygame.display.set_caption(f"FPS: {self.fps}")
+            pygame.display.set_caption(f"FPS: {round(self.fps, -1)} | Antall partikler: {len(self.PM)}")
             
             for event in pygame.event.get():
-                if event.type == pygame.quit:
+                if event.type == pygame.QUIT:
                     self.running = False
         
         
-        self.update(dt)
+            self.update(dt)
+            self.draw(self.screen)
+        
+        pygame.quit()
+
+if __name__ == "__main__":
+    game = Game()
+    game.run()
