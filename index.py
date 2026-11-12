@@ -1,6 +1,7 @@
 import pygame
 import random
 from pygame import Vector2
+import numpy as np
 
 # pos = (0,0)
 
@@ -8,7 +9,7 @@ vek = Vector2(2) - Vector2(3)
 
 print(vek)
 
-SCREEN_SIZE = Vector2(600, 600)
+SCREEN_SIZE = Vector2(800, 600)
 
 class Particle:
     def __init__(self, pos, vel, size: int, color, mass = 1):
@@ -151,7 +152,7 @@ class Game:
             #tilfelldig startfart
             vel = Vector2(random.uniform(-30, 30), random.uniform(-30, 30))
             
-            new_particles.append(Particle(pos, vel, size =6, color=random.choice(rand_colors)))
+            new_particles.append(Particle(pos, vel, size=2, color=random.choice(rand_colors)))
         
         self.PM.add(new_particles)
             
@@ -159,7 +160,7 @@ class Game:
         if pygame.mouse.get_pressed()[0]:
             pos = Vector2(pygame.mouse.get_pos())
             offset = Vector2(random.uniform(-5, 5), random.uniform(-5, 5))
-            self.PM.add( [Particle(pos + offset, vel=Vector2(0,0), size=6, color="white")] )
+            self.PM.add( [Particle(pos + offset, vel=Vector2(0,0), size=4, color="white",mass=10)] )
         
         self.PM.update(dt)
     
