@@ -12,6 +12,32 @@ import numpy as np
 SCREEN_SIZE = Vector2(800, 600)
 wrapping = True
 
+min_extra_dist = 10 #Hvor nær to partikkler kan være før de dytter hverandre. min dist = size_1 + size_2 + min_extra
+pushing_k = 25  #Hvor hardt partiklene dyttes vekk når de er for nære.
+damping = 0.99 #hvor mye prosenthvis fart som beholdes hver frame
+grav_const = 5000 #tyngdekraftskonstanten 
+
+
+colors = ["red", "green", "blue"]
+
+def randomize_relations():
+    relations = {}
+    for a in colors:
+        relations[a] = {}
+        for b in colors:
+            #Jeg har lyst til å unngå nesten null relasjoner, så jeg hopper over verdiene fra -0.3 til 0.3
+            if random.random() < 0.5:
+                relations[a][b] = random.uniform(0.3, 1)
+            else:
+                relations[a][b] = random.uniform(-0.3, -1)
+    
+    return relations
+
+relations = randomize_relations()
+
+def re_randomize_relations():
+    relations.update(randomize_relations())
+
 class Particle:
     def __init__(self, pos, vel, size: int, color, mass = 1):
         self.pos = Vector2(pos)
@@ -31,7 +57,7 @@ class Particle:
         self.vel += self.acc * dt
         
         #Friksjon / demping av fart slik at systemet gradvis "mister energi"
-        self.vel *= 0.98 ** (dt*60)
+        self.vel *= damping ** (dt*60)
         
         #oppdaterer posisjon bassert på fart
         self.pos += self.vel * dt
@@ -84,7 +110,6 @@ class Particle_Manager:
         Returns:
             float: akselerasjon fra tyngdekraft
         """
-        grav_const = 5000
         return (grav_const * p1_mass * p2_mass) / (distance**2)
     
     def apply_forces(self):
@@ -108,20 +133,26 @@ class Particle_Manager:
                 
                 #Vi har garantert at diff og raw_dist ikke er null
                 direction = diff.normalize()
-                min_dist = p1.size + p2.size + 10
+                min_dist = p1.size + p2.size + min_extra_dist
                 
                 if raw_dist < min_dist:
-                    strength = (min_dist - raw_dist) * 25
+                    #Stryken av dyttingen kalkuleres med hooks regel for fjærer.
+                    #F = x*k
+                    #x: distanse fra hvileposisjonen, her er det mindist
+                    #k: dette er en setting som jeg definerer i starten av koden
+                    strength = (min_dist - raw_dist) * pushing_k
                     force = direction * strength
                     p1.apply_force(-force)
                     p2.apply_force(force)
                 else:
                     #Hvis partiklene er langt nok unna så drar de til hverandre
                     strength = self.grav_Force(raw_dist, p1.mass, p2.mass)
+                    relation_1_2 = relations[p1.color][p2.color] # hvordan p1 reagerer til p2
+                    relation_2_1 = relations[p2.color][p1.color] # Hvordan p2 reagerer til p1
                     force = direction * strength
                     #Direction er FRA p1 TIL p2. For å dra må vi flytte p1 mot p2 og p2 mot p1
-                    p1.apply_force(force)
-                    p2.apply_force(-force)
+                    p1.apply_force(direction * strength * relation_1_2)
+                    p2.apply_force(-direction * strength * relation_2_1)
                 
     def update(self, dt):
         self.apply_forces()
@@ -150,8 +181,6 @@ class Game:
     def spawn_particle(self, number):
         new_particles = []
         
-        rand_colors = ["red", "green", "blue"]
-        
         for i in range(number):
             pos = Vector2(
                 random.uniform(50, SCREEN_SIZE.x - 50),
@@ -160,7 +189,7 @@ class Game:
             #tilfelldig startfart
             vel = Vector2(random.uniform(-10, 10), random.uniform(-10, 10))
             
-            new_particles.append(Particle(pos, vel, size=1, color=random.choice(rand_colors), mass=1))
+            new_particles.append(Particle(pos, vel, size=1, color=random.choice(colors), mass=1))
         
         self.PM.add(new_particles)
             
@@ -168,7 +197,8 @@ class Game:
         if pygame.mouse.get_pressed()[0]:
             pos = Vector2(pygame.mouse.get_pos())
             offset = Vector2(random.uniform(-5, 5), random.uniform(-5, 5))
-            self.PM.add( [Particle(pos + offset, vel=Vector2(0,0), size=1, color="white", mass=1)] )
+            self.PM.add( [Particle(pos + offset, vel=Vector2(0,0), size=1, color=random.choice(colors), mass=1)] )
+            
         
         self.PM.update(dt)
     
@@ -193,6 +223,11 @@ class Game:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     self.running = False
+                
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_r:
+                        re_randomize_relations()
+                        print(relations)
         
         
             self.update(dt)
