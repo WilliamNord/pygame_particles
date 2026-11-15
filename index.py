@@ -5,11 +5,12 @@ import numpy as np
 
 # pos = (0,0)
 
-vek = Vector2(2) - Vector2(3)
+# vek = Vector2(2) - Vector2(3)
 
-print(vek)
+# print(vek)
 
 SCREEN_SIZE = Vector2(800, 600)
+wrapping = True
 
 class Particle:
     def __init__(self, pos, vel, size: int, color, mass = 1):
@@ -30,7 +31,7 @@ class Particle:
         self.vel += self.acc * dt
         
         #Friksjon / demping av fart slik at systemet gradvis "mister energi"
-        self.vel *= 0.98
+        self.vel *= 0.98 ** (dt*60)
         
         #oppdaterer posisjon bassert på fart
         self.pos += self.vel * dt
@@ -39,19 +40,26 @@ class Particle:
 
         #Spretter med venstre vegg av spillet
         #Hvis sentrum til partikkelet er nærmere veggen enn radiusen, er partikkelet inni veggen og må sprette tilbake
-        if self.pos.x < self.size:
-            self.pos.x = self.size
-            self.vel.x *= -1
-        elif self.pos.x > SCREEN_SIZE.x - self.size:
-            self.pos.x = SCREEN_SIZE.x - self.size
-            self.vel.x *= -1
+        
+        if wrapping:
+            #Jeg har funnet denne veldig enkle metoden for wrapping. 
+            #(-10 + 100) % 100 = 90 => en partikkel som er for langt til venstre vil dukke opp på høyre siden.
+            self.pos.x = (self.pos.x + SCREEN_SIZE.x) % SCREEN_SIZE.x
+            self.pos.y = (self.pos.y + SCREEN_SIZE.y) % SCREEN_SIZE.y
+        else:
+            if self.pos.x < self.size:
+                self.pos.x = self.size
+                self.vel.x *= -1
+            elif self.pos.x > SCREEN_SIZE.x - self.size:
+                self.pos.x = SCREEN_SIZE.x - self.size
+                self.vel.x *= -1
 
-        if self.pos.y < self.size:
-            self.pos.y = self.size
-            self.vel.y *= -1
-        elif self.pos.y > SCREEN_SIZE.y - self.size:
-            self.pos.y = SCREEN_SIZE.y - self.size
-            self.vel.y *= -1
+            if self.pos.y < self.size:
+                self.pos.y = self.size
+                self.vel.y *= -1
+            elif self.pos.y > SCREEN_SIZE.y - self.size:
+                self.pos.y = SCREEN_SIZE.y - self.size
+                self.vel.y *= -1
     
     def draw(self, surface):
         pygame.draw.circle(surface, self.color, self.pos, self.size)
@@ -76,7 +84,7 @@ class Particle_Manager:
         Returns:
             float: akselerasjon fra tyngdekraft
         """
-        grav_const = 10000
+        grav_const = 5000
         return (grav_const * p1_mass * p2_mass) / (distance**2)
     
     def apply_forces(self):
@@ -150,9 +158,9 @@ class Game:
                 random.uniform(50, SCREEN_SIZE.y - 50)
             )
             #tilfelldig startfart
-            vel = Vector2(random.uniform(-30, 30), random.uniform(-30, 30))
+            vel = Vector2(random.uniform(-10, 10), random.uniform(-10, 10))
             
-            new_particles.append(Particle(pos, vel, size=2, color=random.choice(rand_colors)))
+            new_particles.append(Particle(pos, vel, size=1, color=random.choice(rand_colors), mass=1))
         
         self.PM.add(new_particles)
             
@@ -160,7 +168,7 @@ class Game:
         if pygame.mouse.get_pressed()[0]:
             pos = Vector2(pygame.mouse.get_pos())
             offset = Vector2(random.uniform(-5, 5), random.uniform(-5, 5))
-            self.PM.add( [Particle(pos + offset, vel=Vector2(0,0), size=4, color="white",mass=10)] )
+            self.PM.add( [Particle(pos + offset, vel=Vector2(0,0), size=1, color="white", mass=1)] )
         
         self.PM.update(dt)
     
