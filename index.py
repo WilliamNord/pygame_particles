@@ -13,7 +13,7 @@ SCREEN_SIZE = Vector2(800, 600)
 wrapping = True
 
 min_extra_dist = 10 #Hvor nær to partikkler kan være før de dytter hverandre. min dist = size_1 + size_2 + min_extra
-pushing_k = 25  #Hvor hardt partiklene dyttes vekk når de er for nære.
+pushing_k = 250  #Hvor hardt partiklene dyttes vekk når de er for nære.
 damping = 0.99 #hvor mye prosenthvis fart som beholdes hver frame
 grav_const = 5000 #tyngdekraftskonstanten 
 
@@ -128,7 +128,7 @@ class Particle_Manager:
                     p1.pos.y += random.uniform(-0.1, 0.1)
                     continue
                 
-                if raw_dist > 150:
+                if raw_dist > 50:
                     continue
                 
                 #Vi har garantert at diff og raw_dist ikke er null
@@ -187,9 +187,9 @@ class Game:
                 random.uniform(50, SCREEN_SIZE.y - 50)
             )
             #tilfelldig startfart
-            vel = Vector2(random.uniform(-10, 10), random.uniform(-10, 10))
+            vel = Vector2(random.uniform(-1, 1), random.uniform(-1, 1))
             
-            new_particles.append(Particle(pos, vel, size=1, color=random.choice(colors), mass=1))
+            new_particles.append(Particle(pos, vel, size=2, color=random.choice(colors), mass=1))
         
         self.PM.add(new_particles)
             
@@ -197,7 +197,7 @@ class Game:
         if pygame.mouse.get_pressed()[0]:
             pos = Vector2(pygame.mouse.get_pos())
             offset = Vector2(random.uniform(-5, 5), random.uniform(-5, 5))
-            self.PM.add( [Particle(pos + offset, vel=Vector2(0,0), size=1, color=random.choice(colors), mass=1)] )
+            self.PM.add( [Particle(pos + offset, vel=Vector2(0,0), size=2, color=random.choice(colors), mass=1)] )
             
         
         self.PM.update(dt)
@@ -227,7 +227,11 @@ class Game:
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_r:
                         re_randomize_relations()
-                        print(relations)
+                        for color, value in relations.items():
+                            print(color, value)
+                    if event.key == pygame.K_w:
+                        global wrapping
+                        wrapping = not wrapping #flipper wrapping av og på
         
         
             self.update(dt)
